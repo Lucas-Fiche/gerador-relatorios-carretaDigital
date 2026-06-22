@@ -141,7 +141,8 @@ function gerarRelatorios(payload) {
     throw new Error('Nenhum colaborador selecionado.');
   }
 
-  var mesCompetencia = formatarMesCompetencia_(payload.mes, payload.ano); // ex.: "maio/2026"
+  var mesCompetencia = formatarMesCompetencia_(payload.mes, payload.ano); // ex.: "maio de 2026"
+  var reciboPrefixo = formatarPrefixoRecibo_(payload.mes, payload.ano);   // ex.: "202605"
   var pasta = DriveApp.getFolderById(CONFIG.OUTPUT_FOLDER_ID);
   var template = DriveApp.getFileById(CONFIG.TEMPLATE_DOC_ID);
 
@@ -151,7 +152,7 @@ function gerarRelatorios(payload) {
   selecionadas.forEach(function (linha) {
     var nome = String(linha[COLUNAS.nome] || 'colaborador');
     try {
-      var url = gerarUmRelatorio_(linha, mesCompetencia, template, pasta);
+      var url = gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta);
       gerados.push({ nome: nome, url: url });
     } catch (e) {
       erros.push(nome + ': ' + e.message);
@@ -169,9 +170,10 @@ function gerarRelatorios(payload) {
 /**
  * Gera um único PDF a partir do modelo e devolve a URL do PDF.
  */
-function gerarUmRelatorio_(linha, mesCompetencia, template, pasta) {
+function gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta) {
   var nome = String(linha[COLUNAS.nome] || 'colaborador');
-  var nomeArquivo = 'Recibo - ' + sanitizar_(nome) + ' - ' + sanitizar_(mesCompetencia);
+  var nRecibo = reciboPrefixo + '-' + String(linha[COLUNAS.id] || ''); // ex.: "202606-1"
+  var nomeArquivo = 'Recibo ' + sanitizar_(nRecibo) + ' - ' + sanitizar_(nome);
 
   // 1. Copia o modelo como Google Doc temporário.
   var copia = template.makeCopy(nomeArquivo, pasta);
@@ -180,6 +182,7 @@ function gerarUmRelatorio_(linha, mesCompetencia, template, pasta) {
   // 2. Monta os valores de substituição.
   var valorNum = parseValor_(linha[COLUNAS.valor]);
   var subs = {
+    'N_Recibo':                 nRecibo,
     'mes_competencia':          mesCompetencia,
     'ID':                       linha[COLUNAS.id],
     'Nome\\s+Completo':         linha[COLUNAS.nome],
@@ -192,7 +195,8 @@ function gerarUmRelatorio_(linha, mesCompetencia, template, pasta) {
     'CPF':                      linha[COLUNAS.cpf],
     'Descrição\\s+das\\s+Atividades': linha[COLUNAS.descricao],
     'valor_extenso':            valorPorExtenso_(valorNum),
-    'valor':                    formatarMoeda_(valorNum)
+    // O modelo já tem "R$ " antes de <<valor>>, então aqui vai só o número.
+    'valor':                    formatarNumero_(valorNum)
   };
 
   // 3. Substitui no corpo, cabeçalho e rodapé.
@@ -239,6 +243,18 @@ function getMeses() {
   return MESES_PT;
 }
 
+/** Prefixo do recibo no formato AAAAMM. Ex.: maio/2026 -> "202605". */
+function formatarPrefixoRecibo_(mes, ano) {
+  var idx;
+  if (typeof mes === 'number' || /^\d+$/.test(String(mes))) {
+    idx = parseInt(mes, 10);
+  } else {
+    idx = MESES_PT.indexOf(String(mes).toLowerCase());
+  }
+  var mm = ('0' + (idx + 1)).slice(-2);
+  return '' + ano + mm;
+}
+
 function formatarMesCompetencia_(mes, ano) {
   // mes vem como índice 0-11 (string ou número) ou nome.
   var nome;
@@ -267,15 +283,20 @@ function parseValor_(valor) {
   return isNaN(n) ? 0 : n;
 }
 
-/** Formata número como moeda brasileira: 1500 -> "R$ 1.500,00". */
-function formatarMoeda_(n) {
+/** Formata número no padrão brasileiro sem símbolo: 1500 -> "1.500,00". */
+function formatarNumero_(n) {
   var negativo = n < 0;
   n = Math.abs(Math.round(n * 100) / 100);
   var inteiro = Math.floor(n);
   var centavos = Math.round((n - inteiro) * 100);
   var intStr = inteiro.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   var centStr = (centavos < 10 ? '0' : '') + centavos;
-  return (negativo ? '-' : '') + 'R$ ' + intStr + ',' + centStr;
+  return (negativo ? '-' : '') + intStr + ',' + centStr;
+}
+
+/** Formata como moeda brasileira: 1500 -> "R$ 1.500,00". */
+function formatarMoeda_(n) {
+  return 'R$ ' + formatarNumero_(n);
 }
 
 // ---- Valor por extenso (Real brasileiro) ----------------------------------

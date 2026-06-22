@@ -28,28 +28,29 @@ Os dados vêm da aba **`Dados_Destino`** da planilha.
 O modelo (Google Doc) deve conter os marcadores abaixo. Espaços internos são
 tolerados (ex.: `<< Cargo >>` funciona igual a `<<Cargo>>`).
 
-| Placeholder no modelo            | Coluna na aba `Dados_Destino`     |
-| -------------------------------- | --------------------------------- |
-| `<<mes_competencia>>`            | (escolhido no painel)             |
-| `<<ID>>`                         | `Id`                              |
-| `<<Nome Completo>>`              | `Nome Completo`                   |
-| `<<Telefone>>`                   | `Telefone`                        |
-| `<<Cargo>>` (Cargo **e** Função) | `Cargo`                           |
-| `<<Email>>`                      | `Email`                           |
-| `<<Endereço>>`                   | `Endereço`                        |
-| `<<CEP>>`                        | `CEP`                             |
-| `<<Cidade>>`                     | `Cidade`                          |
-| `<<CPF>>`                        | `CNPJ / CPF / IG Favorecido`      |
-| `<<Descrição das Atividades>>`   | `DESCRIÇÃO ATIVIDADES`            |
-| `<<valor>>`                      | `Valor DL` (formatado `R$ x,xx`)  |
-| `<<valor_extenso>>`              | `Valor DL` (por extenso, gerado)  |
+| Placeholder no modelo            | Conteúdo gerado                                   |
+| -------------------------------- | ------------------------------------------------- |
+| `<<N_Recibo>>`                   | Nº do recibo no formato `AAAAMM-ID` (ex.: `202606-1`) |
+| `<<mes_competencia>>`            | Mês escolhido no painel, formato `maio de 2026`   |
+| `<<ID>>`                         | `Id`                                              |
+| `<<Nome Completo>>`              | `Nome Completo`                                   |
+| `<<Telefone>>`                   | `Telefone`                                        |
+| `<<Cargo>>` (Cargo **e** Função) | `Cargo`                                           |
+| `<<Email>>`                      | `Email`                                           |
+| `<<Endereço>>`                   | `Endereço`                                        |
+| `<<CEP>>`                        | `CEP`                                             |
+| `<<Cidade>>`                     | `Cidade`                                          |
+| `<<CPF>>`                        | `CNPJ / CPF / IG Favorecido`                      |
+| `<<Descrição das Atividades>>`   | `DESCRIÇÃO ATIVIDADES`                            |
+| `<<valor>>`                      | `Valor DL` formatado **sem** símbolo (`15.000,00`) |
+| `<<valor_extenso>>`              | `Valor DL` por extenso (ex.: `quinze mil reais`)  |
 
-> **Atenção:** no modelo original o valor estava fixo (`R$ 15.000,00
-> (quinze mil reais)`). Substitua esse trecho por `<<valor>> (<<valor_extenso>>)`
-> para que cada recibo use o `Valor DL` do colaborador.
+> **`<<valor>>` não inclui o "R$".** No modelo o texto já é `R$ <<valor>>`,
+> então o placeholder devolve apenas o número (`15.000,00`). Não coloque outro
+> "R$" junto ao `<<valor>>`.
 >
-> O trecho do corpo "...relativa ao mês abril/2026..." deve ser trocado por
-> `<<mes_competencia>>`, que sai no formato **"maio de 2026"** (mês por extenso).
+> **`<<N_Recibo>>`** é montado automaticamente como `ano + mês(2 dígitos) + "-" + Id`.
+> Ex.: junho de 2026, bolsista de Id 1 → `202606-1`.
 
 ---
 
@@ -98,7 +99,7 @@ apps-script/
 
 ## Observações técnicas
 
-- O nome do arquivo gerado é `Recibo - <Nome> - <mês>/<ano>.pdf`.
+- O nome do arquivo gerado é `Recibo <N_Recibo> - <Nome>.pdf` (ex.: `Recibo 202606-1 - João Silva.pdf`).
 - O Google Doc temporário criado para cada colaborador é descartado (lixeira)
   após exportar o PDF — só os PDFs ficam na pasta.
 - A conversão do `Valor DL` aceita número puro ou texto no formato brasileiro
