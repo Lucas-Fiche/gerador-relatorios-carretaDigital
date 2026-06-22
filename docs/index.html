@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Relatórios — Carreta Digital</title>
+  <style>
+    :root { --verde: #16a34a; --azul: #0ea5e9; --cinza: #6b7280; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif; color: #1f2937; margin: 0;
+      background: #f3f4f6;
+    }
+    .container {
+      max-width: 640px; margin: 0 auto; padding: 24px 16px 60px;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;
+    }
+    h1 { font-size: 20px; margin: 0 0 2px; }
+    .sub { color: var(--cinza); font-size: 13px; margin-bottom: 18px; }
+    label.titulo { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+    select, input[type="number"] {
+      width: 100%; padding: 9px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;
+    }
+    .linha { display: flex; gap: 10px; }
+    .linha > * { flex: 1; }
+    .lista {
+      border: 1px solid #e5e7eb; border-radius: 10px; max-height: 320px;
+      overflow-y: auto; padding: 4px; margin-top: 4px;
+    }
+    .item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+    .item:hover { background: #f3f4f6; }
+    .item .nome { font-weight: bold; }
+    .item .cargo { color: var(--cinza); font-size: 12px; }
+    .todos {
+      display: flex; align-items: center; gap: 10px; padding: 10px;
+      background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px;
+      margin-bottom: 8px; font-weight: bold; cursor: pointer;
+    }
+    button {
+      width: 100%; padding: 13px; border: none; border-radius: 10px;
+      background: var(--verde); color: #fff; font-size: 15px; font-weight: bold; cursor: pointer;
+    }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .contador { font-size: 12px; color: var(--cinza); margin-top: 6px; }
+    .status { margin-top: 14px; font-size: 13px; }
+    .erro { color: #b91c1c; }
+    .ok { color: #15803d; }
+    .resultados a { display: block; margin: 4px 0; color: var(--azul); text-decoration: none; }
+    .resultados a:hover { text-decoration: underline; }
+    .spinner {
+      display: inline-block; width: 15px; height: 15px; border: 2px solid #d1d5db;
+      border-top-color: var(--verde); border-radius: 50%; animation: spin .8s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .aviso { background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>📄 Gerador de Relatórios</h1>
+      <div class="sub">Carreta Digital — recibos / prestação de contas</div>
+
+      <div id="erroConfig" class="aviso" style="display:none">
+        ⚠️ Configure <code>docs/config.js</code> com a URL do Web App e o token antes de usar.
+      </div>
+
+      <div class="secao" style="margin-bottom:18px">
+        <label class="titulo">1) Mês de competência</label>
+        <div class="linha">
+          <select id="mes"></select>
+          <input type="number" id="ano" min="2020" max="2100" />
+        </div>
+      </div>
+
+      <div class="secao">
+        <label class="titulo">2) Colaboradores</label>
+        <label class="todos">
+          <input type="checkbox" id="chkTodos" />
+          Gerar para TODOS os colaboradores
+        </label>
+        <div id="lista" class="lista">
+          <div class="contador"><span class="spinner"></span>Carregando...</div>
+        </div>
+        <div class="contador" id="contador"></div>
+      </div>
+
+      <button id="btnGerar" onclick="gerar()" disabled style="margin-top:16px">
+        Gerar relatórios (PDF)
+      </button>
+
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    var CFG = window.APP_CONFIG || {};
+    var colaboradores = [];
+
+    function configOk() {
+      return CFG.API_URL && CFG.API_URL.indexOf('http') === 0 &&
+             CFG.API_TOKEN && CFG.API_TOKEN.indexOf('DEFINA') !== 0;
+    }
+
+    // Chamada à API do Apps Script. POST text/plain evita preflight CORS.
+    function api(action, extra) {
+      var body = Object.assign({ action: action, token: CFG.API_TOKEN }, extra || {});
+      return fetch(CFG.API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      }).then(function (r) { return r.json(); });
+    }
+
+    function init() {
+      var meses = ['janeiro','fevereiro','março','abril','maio','junho',
+                   'julho','agosto','setembro','outubro','novembro','dezembro'];
+      var hoje = new Date();
+      var selMes = document.getElementById('mes');
+      meses.forEach(function (m, i) {
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+        if (i === hoje.getMonth()) opt.selected = true;
+        selMes.appendChild(opt);
+      });
+      document.getElementById('ano').value = hoje.getFullYear();
+
+      if (!configOk()) {
+        document.getElementById('erroConfig').style.display = 'block';
+        document.getElementById('lista').innerHTML =
+          '<div class="contador">Configuração pendente.</div>';
+        return;
+      }
+
+      api('listar')
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.erro || 'Falha ao listar.');
+          montarLista(res.colaboradores);
+        })
+        .catch(falha);
+    }
+
+    function montarLista(lista) {
+      colaboradores = lista || [];
+      var div = document.getElementById('lista');
+      div.innerHTML = '';
+      if (colaboradores.length === 0) {
+        div.innerHTML = '<div class="contador">Nenhum colaborador encontrado na aba.</div>';
+        return;
+      }
+      colaboradores.forEach(function (c) {
+        var item = document.createElement('label');
+        item.className = 'item';
+        item.innerHTML =
+          '<input type="checkbox" class="chk" value="' + c.rowIndex + '" onchange="atualizarContador()" />' +
+          '<span><span class="nome">' + escapeHtml(c.nome) + '</span>' +
+          (c.cargo ? '<br><span class="cargo">' + escapeHtml(c.cargo) + '</span>' : '') + '</span>';
+        div.appendChild(item);
+      });
+      document.getElementById('btnGerar').disabled = false;
+      atualizarContador();
+    }
+
+    function checkboxes() {
+      return Array.prototype.slice.call(document.querySelectorAll('.chk'));
+    }
+
+    document.addEventListener('change', function (e) {
+      if (e.target && e.target.id === 'chkTodos') {
+        var on = e.target.checked;
+        checkboxes().forEach(function (cb) { cb.checked = on; cb.disabled = on; });
+        atualizarContador();
+      }
+    });
+
+    function atualizarContador() {
+      var todos = document.getElementById('chkTodos').checked;
+      var n = todos ? colaboradores.length
+                    : checkboxes().filter(function (cb) { return cb.checked; }).length;
+      document.getElementById('contador').textContent =
+        n + ' de ' + colaboradores.length + ' selecionado(s)';
+    }
+
+    function gerar() {
+      var todos = document.getElementById('chkTodos').checked;
+      var rowIndexes = checkboxes()
+        .filter(function (cb) { return cb.checked; })
+        .map(function (cb) { return parseInt(cb.value, 10); });
+
+      if (!todos && rowIndexes.length === 0) {
+        setStatus('<span class="erro">Selecione ao menos um colaborador.</span>');
+        return;
+      }
+
+      var btn = document.getElementById('btnGerar');
+      btn.disabled = true;
+      var total = todos ? colaboradores.length : rowIndexes.length;
+      setStatus('<span class="spinner"></span>Gerando ' + total +
+                ' relatório(s)... pode levar alguns segundos.');
+
+      api('gerar', {
+        todos: todos,
+        rowIndexes: rowIndexes,
+        mes: parseInt(document.getElementById('mes').value, 10),
+        ano: parseInt(document.getElementById('ano').value, 10)
+      })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.erro && !res.gerados) throw new Error(res.erro);
+        mostrarResultado(res);
+      })
+      .catch(function (err) { btn.disabled = false; falha(err); });
+    }
+
+    function mostrarResultado(res) {
+      var html = '';
+      if (res.gerados && res.gerados.length > 0) {
+        html += '<div class="ok">✓ ' + res.gerados.length + ' relatório(s) gerado(s).</div>';
+        html += '<div class="resultados">';
+        res.gerados.forEach(function (g) {
+          html += '<a href="' + g.url + '" target="_blank">📄 ' + escapeHtml(g.nome) + '</a>';
+        });
+        if (res.pastaUrl) {
+          html += '<a href="' + res.pastaUrl + '" target="_blank"><b>📁 Abrir pasta no Drive</b></a>';
+        }
+        html += '</div>';
+      }
+      if (res.erros && res.erros.length > 0) {
+        html += '<div class="erro"><b>Erros:</b><br>' + res.erros.map(escapeHtml).join('<br>') + '</div>';
+      }
+      if (!html) html = '<span class="erro">Nenhum relatório gerado.</span>';
+      setStatus(html);
+    }
+
+    function falha(err) {
+      setStatus('<span class="erro">Erro: ' + escapeHtml((err && err.message) || err) + '</span>');
+    }
+
+    function setStatus(html) { document.getElementById('status').innerHTML = html; }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -24,7 +24,11 @@ var CONFIG = {
 
   // ID da pasta do Drive onde os PDFs serão salvos.
   // Ex.: na URL https://drive.google.com/drive/folders/AQUI_O_ID
-  OUTPUT_FOLDER_ID: 'COLE_AQUI_O_ID_DA_PASTA_DESTINO'
+  OUTPUT_FOLDER_ID: 'COLE_AQUI_O_ID_DA_PASTA_DESTINO',
+
+  // Token compartilhado entre o site (GitHub Pages) e este Web App.
+  // Use uma string longa e aleatória. DEVE ser igual ao API_TOKEN do config.js.
+  API_TOKEN: 'DEFINA_UM_TOKEN_LONGO_E_ALEATORIO'
 };
 
 // Nomes EXATOS dos cabeçalhos das colunas na aba Dados_Destino.
@@ -61,7 +65,74 @@ function abrirPainel() {
 }
 
 // ---------------------------------------------------------------------------
-// LEITURA DOS DADOS (chamado pelo painel)
+// API WEB APP (consumida pela tela hospedada no GitHub Pages)
+// ---------------------------------------------------------------------------
+//
+// Publique este script como Web App (Implantar > Nova implantação > Web app):
+//   - "Executar como": Eu (dono da planilha)
+//   - "Quem tem acesso": Qualquer pessoa
+// Copie a URL .../exec para o config.js do site.
+//
+// Observação sobre CORS: o ContentService do Apps Script não permite definir
+// cabeçalhos. Por isso a tela faz POST com Content-Type "text/plain" (requisição
+// "simples", sem preflight); a resposta vem do redirecionamento para
+// googleusercontent.com, que já inclui Access-Control-Allow-Origin: *.
+
+function doGet(e)  { return rotear_(e); }
+function doPost(e) { return rotear_(e); }
+
+function rotear_(e) {
+  try {
+    var req = parseRequisicao_(e);
+
+    if (!req.token || req.token !== CONFIG.API_TOKEN) {
+      return jsonOut_({ ok: false, erro: 'Token inválido ou ausente.' });
+    }
+
+    var resposta;
+    switch (req.action) {
+      case 'listar':
+        resposta = { ok: true, colaboradores: getColaboradores() };
+        break;
+      case 'gerar':
+        resposta = gerarRelatorios({
+          todos:      !!req.todos,
+          rowIndexes: req.rowIndexes || [],
+          mes:        req.mes,
+          ano:        req.ano
+        });
+        break;
+      default:
+        resposta = { ok: false, erro: 'Ação desconhecida: ' + req.action };
+    }
+    return jsonOut_(resposta);
+  } catch (err) {
+    return jsonOut_({ ok: false, erro: String((err && err.message) || err) });
+  }
+}
+
+/** Lê os parâmetros tanto de POST (JSON) quanto de GET (query string). */
+function parseRequisicao_(e) {
+  if (e && e.postData && e.postData.contents) {
+    try { return JSON.parse(e.postData.contents); } catch (x) { /* ignora */ }
+  }
+  var p = (e && e.parameter) || {};
+  var obj = {};
+  Object.keys(p).forEach(function (k) { obj[k] = p[k]; });
+  if (obj.rowIndexes) { try { obj.rowIndexes = JSON.parse(obj.rowIndexes); } catch (x) {} }
+  if (obj.todos != null) obj.todos = (obj.todos === 'true' || obj.todos === true);
+  if (obj.mes != null) obj.mes = parseInt(obj.mes, 10);
+  if (obj.ano != null) obj.ano = parseInt(obj.ano, 10);
+  return obj;
+}
+
+function jsonOut_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------------------------------------------------------------------------
+// LEITURA DOS DADOS (chamado pelo painel/API)
 // ---------------------------------------------------------------------------
 
 /**

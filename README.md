@@ -92,10 +92,55 @@ tolerados (ex.: `<< Cargo >>` funciona igual a `<<Cargo>>`).
 
 ```
 apps-script/
-  Codigo.gs        # lógica: menu, leitura da planilha, geração de PDFs, valor por extenso
-  Painel.html      # interface (barra lateral) com seleção de mês e colaboradores
-  appsscript.json  # manifesto / escopos de permissão
+  Codigo.gs        # lógica: menu, API Web App, leitura da planilha, geração de PDFs, valor por extenso
+  Painel.html      # interface da barra lateral (uso direto dentro da planilha)
+  appsscript.json  # manifesto / escopos / configuração do Web App
+docs/              # site estático servido pelo GitHub Pages (Opção B de uso)
+  index.html       # mesma tela, porém standalone, consumindo a API Web App
+  config.js        # URL do Web App + token (você preenche)
 ```
+
+---
+
+## Usar pela WEB (GitHub Pages + API Web App)
+
+Em vez de abrir o painel dentro da planilha, é possível hospedar a tela no
+GitHub Pages. A página é **estática**; quem lê a planilha e gera os PDFs continua
+sendo o Apps Script, agora publicado como **Web App** (API). A página apenas
+chama essa API.
+
+```
+[ GitHub Pages: docs/index.html ]  --fetch-->  [ Apps Script Web App ]  -->  Sheets / Docs / Drive
+```
+
+### 1. Definir o token
+- Em `apps-script/Codigo.gs`, defina `CONFIG.API_TOKEN` com uma string longa e
+  aleatória.
+- Use exatamente o **mesmo** valor em `docs/config.js` (`API_TOKEN`).
+
+### 2. Publicar o Apps Script como Web App
+- No editor do Apps Script: **Implantar → Nova implantação → Tipo: App da Web**.
+- Configure:
+  - **Executar como:** *Eu* (você, dono da planilha) — assim ninguém precisa logar.
+  - **Quem pode acessar:** *Qualquer pessoa*.
+- Implante, autorize as permissões e copie a **URL** (termina em `/exec`).
+
+### 3. Configurar o site
+- Em `docs/config.js`, preencha `API_URL` com a URL `/exec` e `API_TOKEN` com o token.
+
+### 4. Ativar o GitHub Pages
+- No GitHub: **Settings → Pages**.
+- **Source:** *Deploy from a branch* → branch `main` (ou a sua) → pasta **`/docs`**.
+- Salve. A URL pública aparece em instantes (ex.: `https://usuario.github.io/repo/`).
+
+### Segurança (importante)
+- O GitHub Pages é **público**, então o `API_TOKEN` em `config.js` fica visível
+  no código-fonte do site. Ele serve para **dificultar acesso casual**, não como
+  segredo forte. Quem obtiver o token e a URL consegue chamar a API.
+- Para proteção real, prefira o uso pelo painel dentro da planilha, ou a
+  abordagem 100% no navegador com login Google (OAuth por usuário).
+- Os links de PDF retornados abrem para quem tem acesso à pasta do Drive
+  (normalmente você, dono). Compartilhe a pasta se outras pessoas precisarem abrir.
 
 ## Observações técnicas
 
