@@ -88,7 +88,9 @@
 
     /* Toolbar of collaborators card */
     .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
-    .search { position: relative; flex: 1 1 240px; }
+    .search { position: relative; flex: 1 1 220px; }
+    .filtro-cargo { flex: 0 1 200px; }
+    .filtro-cargo select { padding: 11px 12px; }
     .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
     .search input { padding-left: 38px; }
 
@@ -122,8 +124,8 @@
       letter-spacing: .02em;
     }
     .meta { min-width: 0; }
-    .meta .nome { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
-    .meta .cargo { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+    .meta .nome { display: block; font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+    .meta .cargo { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
     .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
 
     /* Sticky action bar */
@@ -218,9 +220,12 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
               <input type="search" id="busca" placeholder="Buscar por nome ou cargo..." oninput="filtrar()" />
             </div>
+            <div class="filtro-cargo">
+              <select id="filtroCargo" onchange="filtrar()"><option value="">Todos os cargos</option></select>
+            </div>
             <label class="toggle-all">
               <input type="checkbox" id="chkTodos" />
-              Selecionar todos
+              <span id="todosLabel">Selecionar todos</span>
             </label>
           </div>
           <div id="lista" class="list">
@@ -312,6 +317,7 @@
         var item = document.createElement('label');
         item.className = 'item';
         item.dataset.busca = ((c.nome || '') + ' ' + (c.cargo || '')).toLowerCase();
+        item.dataset.cargo = (c.cargo || '');
         item.innerHTML =
           '<input type="checkbox" class="chk" value="' + c.rowIndex + '" onchange="atualizarContador()" />' +
           '<span class="avatar" style="background:' + corAvatar(i) + '">' + escapeHtml(iniciais(c.nome)) + '</span>' +
@@ -319,48 +325,83 @@
           (c.cargo ? '<span class="cargo">' + escapeHtml(c.cargo) + '</span>' : '') + '</span>';
         div.appendChild(item);
       });
+      popularCargos();
       document.getElementById('btnGerar').disabled = false;
       atualizarContador();
     }
 
-    function checkboxes() { return Array.prototype.slice.call(document.querySelectorAll('.chk')); }
+    function popularCargos() {
+      var cargos = {};
+      colaboradores.forEach(function (c) { if (c.cargo) cargos[c.cargo] = true; });
+      var sel = document.getElementById('filtroCargo');
+      Object.keys(cargos).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); })
+        .forEach(function (cargo) {
+          var opt = document.createElement('option');
+          opt.value = cargo; opt.textContent = cargo;
+          sel.appendChild(opt);
+        });
+    }
 
+    function checkboxes() { return Array.prototype.slice.call(document.querySelectorAll('.chk')); }
+    function itens() { return Array.prototype.slice.call(document.querySelectorAll('.item')); }
+    function itensVisiveis() { return itens().filter(function (it) { return it.style.display !== 'none'; }); }
+
+    // "Selecionar todos" atua sobre os itens VISÍVEIS (respeita busca + filtro de cargo).
     document.addEventListener('change', function (e) {
       if (e.target && e.target.id === 'chkTodos') {
         var on = e.target.checked;
-        checkboxes().forEach(function (cb) { cb.checked = on; cb.disabled = on; });
+        itensVisiveis().forEach(function (it) { it.querySelector('.chk').checked = on; });
         atualizarContador();
       }
     });
 
     function filtrar() {
       var q = document.getElementById('busca').value.toLowerCase().trim();
-      Array.prototype.slice.call(document.querySelectorAll('.item')).forEach(function (it) {
-        it.style.display = (!q || it.dataset.busca.indexOf(q) > -1) ? '' : 'none';
+      var cargo = document.getElementById('filtroCargo').value;
+      itens().forEach(function (it) {
+        var okBusca = !q || it.dataset.busca.indexOf(q) > -1;
+        var okCargo = !cargo || it.dataset.cargo === cargo;
+        it.style.display = (okBusca && okCargo) ? '' : 'none';
       });
+      atualizarContador();
+    }
+
+    function atualizarRotuloTodos() {
+      var cargo = document.getElementById('filtroCargo').value;
+      var q = document.getElementById('busca').value.trim();
+      var label = document.getElementById('todosLabel');
+      if (cargo) label.textContent = 'Selecionar cargo (' + itensVisiveis().length + ')';
+      else if (q) label.textContent = 'Selecionar visíveis (' + itensVisiveis().length + ')';
+      else label.textContent = 'Selecionar todos';
     }
 
     function atualizarContador() {
-      var todos = document.getElementById('chkTodos').checked;
       checkboxes().forEach(function (cb) {
         cb.closest('.item').classList.toggle('selected', cb.checked);
       });
-      var n = todos ? colaboradores.length
-                    : checkboxes().filter(function (cb) { return cb.checked; }).length;
+      // Sincroniza o estado do "Selecionar todos" com os itens visíveis.
+      var vis = itensVisiveis();
+      var visMarcados = vis.filter(function (it) { return it.querySelector('.chk').checked; }).length;
+      var chk = document.getElementById('chkTodos');
+      chk.checked = vis.length > 0 && visMarcados === vis.length;
+      chk.indeterminate = visMarcados > 0 && visMarcados < vis.length;
+
+      var n = checkboxes().filter(function (cb) { return cb.checked; }).length;
       document.getElementById('contador').innerHTML =
         '<b>' + n + '</b> de ' + colaboradores.length + ' colaborador(es) selecionado(s)';
+      atualizarRotuloTodos();
     }
 
     function gerar() {
-      var todos = document.getElementById('chkTodos').checked;
       var rowIndexes = checkboxes()
         .filter(function (cb) { return cb.checked; })
         .map(function (cb) { return parseInt(cb.value, 10); });
 
-      if (!todos && rowIndexes.length === 0) {
+      if (rowIndexes.length === 0) {
         setStatus('<div class="alert err">Selecione ao menos um colaborador.</div>');
         return;
       }
+      var todos = rowIndexes.length === colaboradores.length;
 
       var btn = document.getElementById('btnGerar');
       var label = document.getElementById('btnLabel');
