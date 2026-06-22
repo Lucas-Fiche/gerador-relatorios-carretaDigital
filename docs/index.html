@@ -4,96 +4,241 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerador de Relatórios — Carreta Digital</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --verde: #16a34a; --azul: #0ea5e9; --cinza: #6b7280; }
-    * { box-sizing: border-box; }
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --primary-soft: #eef2ff;
+      --accent: #059669;
+      --accent-dark: #047857;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --danger: #dc2626;
+      --radius: 14px;
+      --shadow: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: Arial, Helvetica, sans-serif; color: #1f2937; margin: 0;
-      background: #f3f4f6;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 400px at 50% -120px, #e0e7ff 0%, transparent 60%),
+        var(--bg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
-    .container {
-      max-width: 640px; margin: 0 auto; padding: 24px 16px 60px;
+
+    /* Top bar */
+    .topbar {
+      background: linear-gradient(120deg, var(--primary) 0%, #6366f1 60%, #7c3aed 100%);
+      color: #fff;
+      padding: 22px 0;
+      box-shadow: 0 6px 20px rgba(79,70,229,.25);
     }
+    .topbar .inner {
+      max-width: 1040px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .logo {
+      width: 46px; height: 46px; border-radius: 12px; flex: 0 0 auto;
+      background: rgba(255,255,255,.18);
+      display: grid; place-items: center; font-size: 24px;
+      backdrop-filter: blur(4px);
+    }
+    .topbar h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+    .topbar p { font-size: 13px; opacity: .85; font-weight: 500; }
+
+    /* Layout */
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 24px 140px; }
+    .grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
     .card {
-      background: #fff; border-radius: 12px; padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
     }
-    h1 { font-size: 20px; margin: 0 0 2px; }
-    .sub { color: var(--cinza); font-size: 13px; margin-bottom: 18px; }
-    label.titulo { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
-    select, input[type="number"] {
-      width: 100%; padding: 9px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;
+    .card-head {
+      padding: 18px 20px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 10px;
     }
-    .linha { display: flex; gap: 10px; }
-    .linha > * { flex: 1; }
-    .lista {
-      border: 1px solid #e5e7eb; border-radius: 10px; max-height: 320px;
-      overflow-y: auto; padding: 4px; margin-top: 4px;
+    .step {
+      width: 26px; height: 26px; border-radius: 8px; flex: 0 0 auto;
+      background: var(--primary-soft); color: var(--primary);
+      font-weight: 700; font-size: 13px; display: grid; place-items: center;
     }
-    .item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-    .item:hover { background: #f3f4f6; }
-    .item .nome { font-weight: bold; }
-    .item .cargo { color: var(--cinza); font-size: 12px; }
-    .todos {
-      display: flex; align-items: center; gap: 10px; padding: 10px;
-      background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px;
-      margin-bottom: 8px; font-weight: bold; cursor: pointer;
+    .card-head h2 { font-size: 15px; font-weight: 700; }
+    .card-body { padding: 20px; }
+
+    label.lbl { display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+    select, input[type="number"], input[type="search"] {
+      width: 100%; padding: 11px 12px; border: 1px solid var(--line);
+      border-radius: 10px; font-size: 14px; font-family: inherit; color: var(--ink);
+      background: #fff; transition: border-color .15s, box-shadow .15s;
     }
-    button {
-      width: 100%; padding: 13px; border: none; border-radius: 10px;
-      background: var(--verde); color: #fff; font-size: 15px; font-weight: bold; cursor: pointer;
+    select:focus, input:focus { outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+    .field + .field { margin-top: 16px; }
+
+    /* Toolbar of collaborators card */
+    .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .search { position: relative; flex: 1 1 240px; }
+    .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .search input { padding-left: 38px; }
+
+    .toggle-all {
+      display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+      padding: 10px 14px; border-radius: 10px; border: 1px solid #a7f3d0;
+      background: #ecfdf5; color: var(--accent-dark); font-weight: 600; font-size: 14px;
+      white-space: nowrap; transition: background .15s;
     }
-    button:disabled { background: #9ca3af; cursor: not-allowed; }
-    .contador { font-size: 12px; color: var(--cinza); margin-top: 6px; }
-    .status { margin-top: 14px; font-size: 13px; }
-    .erro { color: #b91c1c; }
-    .ok { color: #15803d; }
-    .resultados a { display: block; margin: 4px 0; color: var(--azul); text-decoration: none; }
-    .resultados a:hover { text-decoration: underline; }
+    .toggle-all:hover { background: #d1fae5; }
+    .toggle-all input { width: 17px; height: 17px; accent-color: var(--accent); }
+
+    .list {
+      border: 1px solid var(--line); border-radius: 12px;
+      max-height: 56vh; overflow-y: auto; background: #fff;
+    }
+    .list::-webkit-scrollbar { width: 10px; }
+    .list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #fff; }
+
+    .item {
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+      cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background .12s;
+    }
+    .item:last-child { border-bottom: none; }
+    .item:hover { background: #f8fafc; }
+    .item.selected { background: var(--primary-soft); }
+    .item input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--primary); }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto;
+      display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px;
+      letter-spacing: .02em;
+    }
+    .meta { min-width: 0; }
+    .meta .nome { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+    .meta .cargo { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+    .empty { padding: 28px; text-align: center; color: var(--muted); font-size: 14px; }
+
+    /* Sticky action bar */
+    .actionbar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+      background: rgba(255,255,255,.86); backdrop-filter: blur(10px);
+      border-top: 1px solid var(--line); box-shadow: 0 -6px 24px rgba(15,23,42,.06);
+    }
+    .actionbar .inner {
+      max-width: 1040px; margin: 0 auto; padding: 14px 24px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .counter { font-size: 14px; color: var(--muted); font-weight: 500; flex: 1; }
+    .counter b { color: var(--ink); }
+    .btn {
+      border: none; border-radius: 11px; padding: 13px 26px; font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer; color: #fff;
+      background: linear-gradient(120deg, var(--accent) 0%, #10b981 100%);
+      box-shadow: 0 6px 16px rgba(5,150,105,.3); transition: transform .1s, box-shadow .15s, opacity .15s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(5,150,105,.38); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
+
+    /* Spinner + status */
     .spinner {
-      display: inline-block; width: 15px; height: 15px; border: 2px solid #d1d5db;
-      border-top-color: var(--verde); border-radius: 50%; animation: spin .8s linear infinite;
-      vertical-align: middle; margin-right: 6px;
+      display: inline-block; width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
     }
+    .spinner.dark { border-color: #cbd5e1; border-top-color: var(--primary); }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .aviso { background: #fef3c7; border: 1px solid #fcd34d; padding: 12px; border-radius: 10px; font-size: 13px; }
+
+    .status { margin-top: 18px; }
+    .alert { padding: 14px 16px; border-radius: 12px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start; }
+    .alert.warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .alert.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+    .alert.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--accent-dark); }
+    .results { margin-top: 12px; display: grid; gap: 6px; }
+    .results a {
+      display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 9px;
+      background: #f8fafc; border: 1px solid var(--line); color: var(--primary);
+      text-decoration: none; font-size: 13.5px; font-weight: 500;
+    }
+    .results a:hover { background: var(--primary-soft); }
+    .results a.folder { background: var(--primary-soft); font-weight: 700; }
+    .skeleton { padding: 12px 16px; }
+    .skeleton .row { height: 40px; border-radius: 8px; margin-bottom: 8px;
+      background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 37%,#f1f5f9 63%);
+      background-size: 400% 100%; animation: sh 1.3s infinite; }
+    @keyframes sh { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h1>📄 Gerador de Relatórios</h1>
-      <div class="sub">Carreta Digital — recibos / prestação de contas</div>
-
-      <div id="erroConfig" class="aviso" style="display:none">
-        ⚠️ Configure <code>docs/config.js</code> com a URL do Web App e o token antes de usar.
+  <header class="topbar">
+    <div class="inner">
+      <div class="logo">📄</div>
+      <div>
+        <h1>Gerador de Relatórios</h1>
+        <p>Carreta Digital — recibos / prestação de contas</p>
       </div>
+    </div>
+  </header>
 
-      <div class="secao" style="margin-bottom:18px">
-        <label class="titulo">1) Mês de competência</label>
-        <div class="linha">
-          <select id="mes"></select>
-          <input type="number" id="ano" min="2020" max="2100" />
+  <main class="wrap">
+    <div id="erroConfig" class="alert warn" style="display:none; margin-bottom:20px">
+      ⚠️ Configure <code>docs/config.js</code> com a URL do Web App e o token antes de usar.
+    </div>
+
+    <div class="grid">
+      <!-- Coluna esquerda: mês -->
+      <section class="card">
+        <div class="card-head"><span class="step">1</span><h2>Mês de competência</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label class="lbl" for="mes">Mês</label>
+            <select id="mes"></select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="ano">Ano</label>
+            <input type="number" id="ano" min="2020" max="2100" />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div class="secao">
-        <label class="titulo">2) Colaboradores</label>
-        <label class="todos">
-          <input type="checkbox" id="chkTodos" />
-          Gerar para TODOS os colaboradores
-        </label>
-        <div id="lista" class="lista">
-          <div class="contador"><span class="spinner"></span>Carregando...</div>
+      <!-- Coluna direita: colaboradores -->
+      <section class="card">
+        <div class="card-head"><span class="step">2</span><h2>Colaboradores</h2></div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="search" id="busca" placeholder="Buscar por nome ou cargo..." oninput="filtrar()" />
+            </div>
+            <label class="toggle-all">
+              <input type="checkbox" id="chkTodos" />
+              Selecionar todos
+            </label>
+          </div>
+          <div id="lista" class="list">
+            <div class="skeleton"><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>
+          </div>
         </div>
-        <div class="contador" id="contador"></div>
-      </div>
+      </section>
+    </div>
 
-      <button id="btnGerar" onclick="gerar()" disabled style="margin-top:16px">
-        Gerar relatórios (PDF)
+    <div id="status" class="status"></div>
+  </main>
+
+  <div class="actionbar">
+    <div class="inner">
+      <div class="counter" id="contador">Carregando...</div>
+      <button class="btn" id="btnGerar" onclick="gerar()" disabled>
+        <span id="btnLabel">Gerar relatórios (PDF)</span>
       </button>
-
-      <div id="status" class="status"></div>
     </div>
   </div>
 
@@ -101,13 +246,13 @@
   <script>
     var CFG = window.APP_CONFIG || {};
     var colaboradores = [];
+    var AVATAR_CORES = ['#4f46e5','#0ea5e9','#059669','#d97706','#db2777','#7c3aed','#0891b2','#ca8a04','#e11d48','#2563eb'];
 
     function configOk() {
       return CFG.API_URL && CFG.API_URL.indexOf('http') === 0 &&
              CFG.API_TOKEN && CFG.API_TOKEN.indexOf('DEFINA') !== 0;
     }
 
-    // Chamada à API do Apps Script. POST text/plain evita preflight CORS.
     function api(action, extra) {
       var body = Object.assign({ action: action, token: CFG.API_TOKEN }, extra || {});
       return fetch(CFG.API_URL, {
@@ -132,9 +277,9 @@
       document.getElementById('ano').value = hoje.getFullYear();
 
       if (!configOk()) {
-        document.getElementById('erroConfig').style.display = 'block';
-        document.getElementById('lista').innerHTML =
-          '<div class="contador">Configuração pendente.</div>';
+        document.getElementById('erroConfig').style.display = 'flex';
+        document.getElementById('lista').innerHTML = '<div class="empty">Configuração pendente.</div>';
+        document.getElementById('contador').textContent = '';
         return;
       }
 
@@ -146,30 +291,39 @@
         .catch(falha);
     }
 
+    function iniciais(nome) {
+      var p = String(nome).trim().split(/\s+/);
+      var a = p[0] ? p[0][0] : '';
+      var b = p.length > 1 ? p[p.length - 1][0] : '';
+      return (a + b).toUpperCase();
+    }
+    function corAvatar(i) { return AVATAR_CORES[i % AVATAR_CORES.length]; }
+
     function montarLista(lista) {
       colaboradores = lista || [];
       var div = document.getElementById('lista');
       div.innerHTML = '';
       if (colaboradores.length === 0) {
-        div.innerHTML = '<div class="contador">Nenhum colaborador encontrado na aba.</div>';
+        div.innerHTML = '<div class="empty">Nenhum colaborador encontrado na aba.</div>';
+        document.getElementById('contador').textContent = '0 colaboradores';
         return;
       }
-      colaboradores.forEach(function (c) {
+      colaboradores.forEach(function (c, i) {
         var item = document.createElement('label');
         item.className = 'item';
+        item.dataset.busca = ((c.nome || '') + ' ' + (c.cargo || '')).toLowerCase();
         item.innerHTML =
           '<input type="checkbox" class="chk" value="' + c.rowIndex + '" onchange="atualizarContador()" />' +
-          '<span><span class="nome">' + escapeHtml(c.nome) + '</span>' +
-          (c.cargo ? '<br><span class="cargo">' + escapeHtml(c.cargo) + '</span>' : '') + '</span>';
+          '<span class="avatar" style="background:' + corAvatar(i) + '">' + escapeHtml(iniciais(c.nome)) + '</span>' +
+          '<span class="meta"><span class="nome">' + escapeHtml(c.nome) + '</span>' +
+          (c.cargo ? '<span class="cargo">' + escapeHtml(c.cargo) + '</span>' : '') + '</span>';
         div.appendChild(item);
       });
       document.getElementById('btnGerar').disabled = false;
       atualizarContador();
     }
 
-    function checkboxes() {
-      return Array.prototype.slice.call(document.querySelectorAll('.chk'));
-    }
+    function checkboxes() { return Array.prototype.slice.call(document.querySelectorAll('.chk')); }
 
     document.addEventListener('change', function (e) {
       if (e.target && e.target.id === 'chkTodos') {
@@ -179,12 +333,22 @@
       }
     });
 
+    function filtrar() {
+      var q = document.getElementById('busca').value.toLowerCase().trim();
+      Array.prototype.slice.call(document.querySelectorAll('.item')).forEach(function (it) {
+        it.style.display = (!q || it.dataset.busca.indexOf(q) > -1) ? '' : 'none';
+      });
+    }
+
     function atualizarContador() {
       var todos = document.getElementById('chkTodos').checked;
+      checkboxes().forEach(function (cb) {
+        cb.closest('.item').classList.toggle('selected', cb.checked);
+      });
       var n = todos ? colaboradores.length
                     : checkboxes().filter(function (cb) { return cb.checked; }).length;
-      document.getElementById('contador').textContent =
-        n + ' de ' + colaboradores.length + ' selecionado(s)';
+      document.getElementById('contador').innerHTML =
+        '<b>' + n + '</b> de ' + colaboradores.length + ' colaborador(es) selecionado(s)';
     }
 
     function gerar() {
@@ -194,56 +358,57 @@
         .map(function (cb) { return parseInt(cb.value, 10); });
 
       if (!todos && rowIndexes.length === 0) {
-        setStatus('<span class="erro">Selecione ao menos um colaborador.</span>');
+        setStatus('<div class="alert err">Selecione ao menos um colaborador.</div>');
         return;
       }
 
       var btn = document.getElementById('btnGerar');
+      var label = document.getElementById('btnLabel');
       btn.disabled = true;
+      label.innerHTML = '<span class="spinner"></span> Gerando...';
       var total = todos ? colaboradores.length : rowIndexes.length;
-      setStatus('<span class="spinner"></span>Gerando ' + total +
-                ' relatório(s)... pode levar alguns segundos.');
+      setStatus('<div class="alert ok"><span class="spinner dark"></span> Gerando ' + total +
+                ' relatório(s)... pode levar alguns segundos.</div>');
 
       api('gerar', {
-        todos: todos,
-        rowIndexes: rowIndexes,
+        todos: todos, rowIndexes: rowIndexes,
         mes: parseInt(document.getElementById('mes').value, 10),
         ano: parseInt(document.getElementById('ano').value, 10)
       })
       .then(function (res) {
-        btn.disabled = false;
+        btn.disabled = false; label.textContent = 'Gerar relatórios (PDF)';
         if (res.erro && !res.gerados) throw new Error(res.erro);
         mostrarResultado(res);
       })
-      .catch(function (err) { btn.disabled = false; falha(err); });
+      .catch(function (err) {
+        btn.disabled = false; label.textContent = 'Gerar relatórios (PDF)';
+        falha(err);
+      });
     }
 
     function mostrarResultado(res) {
       var html = '';
       if (res.gerados && res.gerados.length > 0) {
-        html += '<div class="ok">✓ ' + res.gerados.length + ' relatório(s) gerado(s).</div>';
-        html += '<div class="resultados">';
+        html += '<div class="alert ok">✓ <b>' + res.gerados.length + '</b> relatório(s) gerado(s) com sucesso.</div>';
+        html += '<div class="results">';
         res.gerados.forEach(function (g) {
           html += '<a href="' + g.url + '" target="_blank">📄 ' + escapeHtml(g.nome) + '</a>';
         });
-        if (res.pastaUrl) {
-          html += '<a href="' + res.pastaUrl + '" target="_blank"><b>📁 Abrir pasta no Drive</b></a>';
-        }
+        if (res.pastaUrl) html += '<a class="folder" href="' + res.pastaUrl + '" target="_blank">📁 Abrir pasta no Drive</a>';
         html += '</div>';
       }
       if (res.erros && res.erros.length > 0) {
-        html += '<div class="erro"><b>Erros:</b><br>' + res.erros.map(escapeHtml).join('<br>') + '</div>';
+        html += '<div class="alert err" style="margin-top:12px"><div><b>Erros:</b><br>' +
+                res.erros.map(escapeHtml).join('<br>') + '</div></div>';
       }
-      if (!html) html = '<span class="erro">Nenhum relatório gerado.</span>';
+      if (!html) html = '<div class="alert err">Nenhum relatório gerado.</div>';
       setStatus(html);
     }
 
     function falha(err) {
-      setStatus('<span class="erro">Erro: ' + escapeHtml((err && err.message) || err) + '</span>');
+      setStatus('<div class="alert err">Erro: ' + escapeHtml((err && err.message) || err) + '</div>');
     }
-
     function setStatus(html) { document.getElementById('status').innerHTML = html; }
-
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, function (c) {
         return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
