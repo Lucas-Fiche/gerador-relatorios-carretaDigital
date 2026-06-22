@@ -28,7 +28,7 @@ var CONFIG = {
 
   // Token compartilhado entre o site (GitHub Pages) e este Web App.
   // Use uma string longa e aleatória. DEVE ser igual ao API_TOKEN do config.js.
-  API_TOKEN: 'DEFINA_UM_TOKEN_LONGO_E_ALEATORIO'
+  API_TOKEN: '2ZNfDJkg8hwE3tzAEXvZ7Q5k7LMCLTFa'
 };
 
 // Nomes EXATOS dos cabeçalhos das colunas na aba Dados_Destino.
