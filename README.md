@@ -48,8 +48,8 @@ tolerados (ex.: `<< Cargo >>` funciona igual a `<<Cargo>>`).
 > (quinze mil reais)`). Substitua esse trecho por `<<valor>> (<<valor_extenso>>)`
 > para que cada recibo use o `Valor DL` do colaborador.
 >
-> Se quiser que o trecho do corpo "...relativa ao mês abril/2026..." também
-> acompanhe o mês escolhido, troque `abril/2026` por `<<mes_competencia>>`.
+> O trecho do corpo "...relativa ao mês abril/2026..." deve ser trocado por
+> `<<mes_competencia>>`, que sai no formato **"maio de 2026"** (mês por extenso).
 
 ---
 

@@ -247,7 +247,7 @@ function formatarMesCompetencia_(mes, ano) {
   } else {
     nome = String(mes).toLowerCase();
   }
-  return nome + '/' + ano;
+  return nome + ' de ' + ano; // ex.: "maio de 2026"
 }
 
 function sanitizar_(texto) {
