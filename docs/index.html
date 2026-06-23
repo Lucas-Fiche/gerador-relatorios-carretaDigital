@@ -34,26 +34,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Top bar */
-    .topbar {
-      background: linear-gradient(120deg, var(--primary) 0%, #6366f1 60%, #7c3aed 100%);
-      color: #fff;
-      padding: 22px 0;
-      box-shadow: 0 6px 20px rgba(79,70,229,.25);
-    }
-    .topbar .inner {
-      max-width: 1040px; margin: 0 auto; padding: 0 24px;
-      display: flex; align-items: center; gap: 16px;
-    }
-    .logo {
-      width: 46px; height: 46px; border-radius: 12px; flex: 0 0 auto;
-      background: rgba(255,255,255,.18);
-      display: grid; place-items: center; font-size: 24px;
-      backdrop-filter: blur(4px);
-    }
-    .topbar h1 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
-    .topbar p { font-size: 13px; opacity: .85; font-weight: 500; }
-
     /* Layout */
     .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 24px 140px; }
     .grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
@@ -182,16 +162,6 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="inner">
-      <div class="logo">📄</div>
-      <div>
-        <h1>Gerador de Relatórios</h1>
-        <p>Carreta Digital — recibos / prestação de contas</p>
-      </div>
-    </div>
-  </header>
-
   <main class="wrap">
     <div id="erroConfig" class="alert warn" style="display:none; margin-bottom:20px">
       ⚠️ Configure <code>docs/config.js</code> com a URL do Web App e o token antes de usar.
