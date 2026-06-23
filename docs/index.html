@@ -164,6 +164,8 @@
     .alert.warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
     .alert.err { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
     .alert.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: var(--accent-dark); }
+    .bar { margin-top: 10px; height: 8px; width: 100%; background: #d1fae5; border-radius: 99px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s ease; }
     .results { margin-top: 12px; display: grid; gap: 6px; }
     .results a {
       display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 9px;
@@ -392,6 +394,10 @@
       atualizarRotuloTodos();
     }
 
+    // Tamanho do lote: cada requisição gera no máximo este nº de relatórios,
+    // mantendo cada execução do Apps Script bem abaixo do limite de ~6 min.
+    var BATCH_SIZE = 5;
+
     function gerar() {
       var rowIndexes = checkboxes()
         .filter(function (cb) { return cb.checked; })
@@ -401,30 +407,64 @@
         setStatus('<div class="alert err">Selecione ao menos um colaborador.</div>');
         return;
       }
-      var todos = rowIndexes.length === colaboradores.length;
 
+      var mes = parseInt(document.getElementById('mes').value, 10);
+      var ano = parseInt(document.getElementById('ano').value, 10);
       var btn = document.getElementById('btnGerar');
       var label = document.getElementById('btnLabel');
       btn.disabled = true;
-      label.innerHTML = '<span class="spinner"></span> Gerando...';
-      var total = todos ? colaboradores.length : rowIndexes.length;
-      setStatus('<div class="alert ok"><span class="spinner dark"></span> Gerando ' + total +
-                ' relatório(s)... pode levar alguns segundos.</div>');
 
-      api('gerar', {
-        todos: todos, rowIndexes: rowIndexes,
-        mes: parseInt(document.getElementById('mes').value, 10),
-        ano: parseInt(document.getElementById('ano').value, 10)
-      })
-      .then(function (res) {
-        btn.disabled = false; label.textContent = 'Gerar relatórios (PDF)';
-        if (res.erro && !res.gerados) throw new Error(res.erro);
-        mostrarResultado(res);
-      })
-      .catch(function (err) {
-        btn.disabled = false; label.textContent = 'Gerar relatórios (PDF)';
-        falha(err);
-      });
+      // Divide a seleção em lotes.
+      var lotes = [];
+      for (var i = 0; i < rowIndexes.length; i += BATCH_SIZE) {
+        lotes.push(rowIndexes.slice(i, i + BATCH_SIZE));
+      }
+
+      var total = rowIndexes.length;
+      var acumulado = { gerados: [], erros: [], pastaUrl: '' };
+      var feitos = 0, idx = 0;
+
+      function progresso() {
+        var pct = total ? Math.round(feitos / total * 100) : 0;
+        label.innerHTML = '<span class="spinner"></span> ' + feitos + '/' + total;
+        setStatus(
+          '<div class="alert ok"><div style="flex:1">' +
+          '<span class="spinner dark"></span> Gerando relatórios... <b>' + feitos + '</b> de <b>' +
+          total + '</b> concluído(s). <span style="opacity:.8">Não feche a página.</span>' +
+          '<div class="bar"><span style="width:' + pct + '%"></span></div></div></div>'
+        );
+      }
+
+      function proximo() {
+        if (idx >= lotes.length) { finalizar(); return; }
+        var chunk = lotes[idx++];
+        api('gerar', { todos: false, rowIndexes: chunk, mes: mes, ano: ano })
+          .then(function (res) {
+            if (res.erro && !res.gerados) throw new Error(res.erro);
+            if (res.gerados) acumulado.gerados = acumulado.gerados.concat(res.gerados);
+            if (res.erros) acumulado.erros = acumulado.erros.concat(res.erros);
+            if (res.pastaUrl) acumulado.pastaUrl = res.pastaUrl;
+          })
+          .catch(function (err) {
+            // Falha o lote inteiro, mas segue com os demais.
+            acumulado.erros.push('Lote ' + idx + ' (' + chunk.length +
+              ' itens): ' + ((err && err.message) || err));
+          })
+          .then(function () {
+            feitos += chunk.length;
+            progresso();
+            proximo();
+          });
+      }
+
+      function finalizar() {
+        btn.disabled = false;
+        label.textContent = 'Gerar relatórios (PDF)';
+        mostrarResultado(acumulado);
+      }
+
+      progresso();
+      proximo();
     }
 
     function mostrarResultado(res) {
