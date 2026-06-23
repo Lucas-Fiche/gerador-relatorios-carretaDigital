@@ -249,6 +249,12 @@ function gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta
   var nRecibo = reciboPrefixo + '-' + String(linha[COLUNAS.id] || ''); // ex.: "202606-1"
   var nomeArquivo = 'Recibo ' + sanitizar_(nRecibo) + ' - ' + sanitizar_(nome);
 
+  // Idempotência: remove versões anteriores com o mesmo nome (PDF e Doc
+  // temporário órfão). Assim, se um lote for reenviado após uma falha de
+  // rede, o relatório é regerado sem criar duplicatas na pasta.
+  removerArquivosPorNome_(pasta, nomeArquivo + '.pdf');
+  removerArquivosPorNome_(pasta, nomeArquivo);
+
   // 1. Copia o modelo como Google Doc temporário.
   var copia = template.makeCopy(nomeArquivo, pasta);
   var copiaId = copia.getId();
@@ -290,6 +296,12 @@ function gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta
  * para tolerar como o marcador foi digitado: <<X>>, << X>>, <<X >>, << X >>.
  * valor_extenso vem antes de valor por segurança (sem colisão de substring).
  */
+/** Move para a lixeira todos os arquivos da pasta com o nome informado. */
+function removerArquivosPorNome_(pasta, nome) {
+  var it = pasta.getFilesByName(nome);
+  while (it.hasNext()) it.next().setTrashed(true);
+}
+
 function montarRequests_(subs) {
   var ordem = ['N_Recibo', 'mes_competencia', 'Nome Completo', 'Descrição das Atividades',
                'ID', 'Telefone', 'Cargo', 'Email', 'Endereço', 'CEP', 'Cidade', 'CPF',

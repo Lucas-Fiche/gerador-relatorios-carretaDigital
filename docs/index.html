@@ -230,14 +230,36 @@
              CFG.API_TOKEN && CFG.API_TOKEN.indexOf('DEFINA') !== 0;
     }
 
+    var TIMEOUT_MS = 180000; // 3 min por requisição (aborta e deixa a retentativa agir)
+
     function api(action, extra) {
       var body = Object.assign({ action: action, token: CFG.API_TOKEN }, extra || {});
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS);
       return fetch(CFG.API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(body)
-      }).then(function (r) { return r.json(); });
+        body: JSON.stringify(body),
+        signal: ctrl.signal
+      })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (txt) {
+        try { return JSON.parse(txt); }
+        catch (e) { throw new Error('resposta inválida do servidor'); }
+      })
+      .then(
+        function (res) { clearTimeout(timer); return res; },
+        function (err) {
+          clearTimeout(timer);
+          throw new Error(err && err.name === 'AbortError' ? 'tempo esgotado' : ((err && err.message) || err));
+        }
+      );
     }
+
+    function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
     function init() {
       var meses = ['janeiro','fevereiro','março','abril','maio','junho',
@@ -367,6 +389,8 @@
     // Tamanho do lote: cada requisição gera no máximo este nº de relatórios,
     // mantendo cada execução do Apps Script bem abaixo do limite de ~6 min.
     var BATCH_SIZE = 5;
+    // Quantas vezes reenviar um lote que falhou (rede/timeout) antes de desistir.
+    var MAX_TENTATIVAS = 4;
 
     function gerar() {
       var rowIndexes = checkboxes()
@@ -390,35 +414,59 @@
         lotes.push(rowIndexes.slice(i, i + BATCH_SIZE));
       }
 
+      // Mapa rowIndex -> nome, para nomear quem falhar.
+      var nomePorIdx = {};
+      colaboradores.forEach(function (c) { nomePorIdx[c.rowIndex] = c.nome; });
+
       var total = rowIndexes.length;
       var acumulado = { gerados: [], erros: [], pastaUrl: '' };
       var feitos = 0, idx = 0;
 
-      function progresso() {
+      function progresso(extra) {
         var pct = total ? Math.round(feitos / total * 100) : 0;
         label.innerHTML = '<span class="spinner"></span> ' + feitos + '/' + total;
         setStatus(
           '<div class="alert ok"><div style="flex:1">' +
           '<span class="spinner dark"></span> Gerando relatórios... <b>' + feitos + '</b> de <b>' +
-          total + '</b> concluído(s). <span style="opacity:.8">Não feche a página.</span>' +
+          total + '</b> concluído(s). <span style="opacity:.8">Não feche a página.' +
+          (extra ? ' ' + extra : '') + '</span>' +
           '<div class="bar"><span style="width:' + pct + '%"></span></div></div></div>'
         );
+      }
+
+      // Envia um lote com até MAX_TENTATIVAS, com espera progressiva entre elas.
+      function enviarLote(chunk, tentativa) {
+        return api('gerar', { todos: false, rowIndexes: chunk, mes: mes, ano: ano })
+          .then(function (res) {
+            if (res.erro && !res.gerados) throw new Error(res.erro);
+            return res;
+          })
+          .catch(function (err) {
+            if (tentativa < MAX_TENTATIVAS) {
+              progresso('Tentando novamente (' + (tentativa + 1) + '/' + MAX_TENTATIVAS + ')...');
+              return esperar(2000 * tentativa).then(function () {
+                return enviarLote(chunk, tentativa + 1);
+              });
+            }
+            throw err;
+          });
       }
 
       function proximo() {
         if (idx >= lotes.length) { finalizar(); return; }
         var chunk = lotes[idx++];
-        api('gerar', { todos: false, rowIndexes: chunk, mes: mes, ano: ano })
+        enviarLote(chunk, 1)
           .then(function (res) {
-            if (res.erro && !res.gerados) throw new Error(res.erro);
             if (res.gerados) acumulado.gerados = acumulado.gerados.concat(res.gerados);
             if (res.erros) acumulado.erros = acumulado.erros.concat(res.erros);
             if (res.pastaUrl) acumulado.pastaUrl = res.pastaUrl;
           })
           .catch(function (err) {
-            // Falha o lote inteiro, mas segue com os demais.
-            acumulado.erros.push('Lote ' + idx + ' (' + chunk.length +
-              ' itens): ' + ((err && err.message) || err));
+            // Mesmo após as retentativas o lote falhou: registra cada colaborador.
+            var motivo = (err && err.message) || err;
+            chunk.forEach(function (ri) {
+              acumulado.erros.push((nomePorIdx[ri] || ('linha ' + ri)) + ': ' + motivo);
+            });
           })
           .then(function () {
             feitos += chunk.length;
