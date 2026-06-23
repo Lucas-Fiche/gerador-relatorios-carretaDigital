@@ -240,6 +240,9 @@ function gerarRelatorios(payload) {
 
 /**
  * Gera um único PDF a partir do modelo e devolve a URL do PDF.
+ * Usa a Docs API (serviço avançado "Docs") com batchUpdate: todas as
+ * substituições — corpo, cabeçalho e rodapé — em UMA chamada, sem o custo
+ * de abrir/salvar o documento via DocumentApp.
  */
 function gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta) {
   var nome = String(linha[COLUNAS.nome] || 'colaborador');
@@ -248,50 +251,64 @@ function gerarUmRelatorio_(linha, mesCompetencia, reciboPrefixo, template, pasta
 
   // 1. Copia o modelo como Google Doc temporário.
   var copia = template.makeCopy(nomeArquivo, pasta);
-  var doc = DocumentApp.openById(copia.getId());
+  var copiaId = copia.getId();
 
-  // 2. Monta os valores de substituição.
+  // 2. Monta os valores de substituição (token -> valor).
   var valorNum = parseValor_(linha[COLUNAS.valor]);
   var subs = {
     'N_Recibo':                 nRecibo,
     'mes_competencia':          mesCompetencia,
     'ID':                       linha[COLUNAS.id],
-    'Nome\\s+Completo':         linha[COLUNAS.nome],
+    'Nome Completo':            linha[COLUNAS.nome],
     'Telefone':                 linha[COLUNAS.telefone],
     'Cargo':                    linha[COLUNAS.cargo],
     'Email':                    linha[COLUNAS.email],
-    'Endereço':            linha[COLUNAS.endereco],
+    'Endereço':                 linha[COLUNAS.endereco],
     'CEP':                      linha[COLUNAS.cep],
     'Cidade':                   linha[COLUNAS.cidade],
     'CPF':                      linha[COLUNAS.cpf],
-    'Descrição\\s+das\\s+Atividades': linha[COLUNAS.descricao],
+    'Descrição das Atividades': linha[COLUNAS.descricao],
     'valor_extenso':            valorPorExtenso_(valorNum),
     // O modelo já tem "R$ " antes de <<valor>>, então aqui vai só o número.
     'valor':                    formatarNumero_(valorNum)
   };
 
-  // 3. Substitui no corpo, cabeçalho e rodapé.
-  var alvos = [doc.getBody()];
-  if (doc.getHeader()) alvos.push(doc.getHeader());
-  if (doc.getFooter()) alvos.push(doc.getFooter());
-
-  alvos.forEach(function (alvo) {
-    Object.keys(subs).forEach(function (token) {
-      var valor = subs[token] == null ? '' : String(subs[token]);
-      // Tolera espaços internos: <<  Cargo  >>
-      var regex = '<<\\s*' + token + '\\s*>>';
-      alvo.replaceText(regex, valor);
-    });
-  });
-
-  doc.saveAndClose();
+  // 3. Uma única chamada à Docs API substitui tudo no documento.
+  Docs.Documents.batchUpdate({ requests: montarRequests_(subs) }, copiaId);
 
   // 4. Exporta para PDF e remove o Doc temporário.
-  var pdfBlob = DriveApp.getFileById(copia.getId()).getAs('application/pdf');
+  var pdfBlob = DriveApp.getFileById(copiaId).getAs('application/pdf');
   var pdf = pasta.createFile(pdfBlob).setName(nomeArquivo + '.pdf');
-  copia.setTrashed(true);
+  DriveApp.getFileById(copiaId).setTrashed(true);
 
   return pdf.getUrl();
+}
+
+/**
+ * Monta os requests replaceAllText da Docs API. Como a busca é por texto
+ * literal (sem regex), geramos variantes com/sem espaços ao redor do token
+ * para tolerar como o marcador foi digitado: <<X>>, << X>>, <<X >>, << X >>.
+ * valor_extenso vem antes de valor por segurança (sem colisão de substring).
+ */
+function montarRequests_(subs) {
+  var ordem = ['N_Recibo', 'mes_competencia', 'Nome Completo', 'Descrição das Atividades',
+               'ID', 'Telefone', 'Cargo', 'Email', 'Endereço', 'CEP', 'Cidade', 'CPF',
+               'valor_extenso', 'valor'];
+  var requests = [];
+  ordem.forEach(function (token) {
+    var valor = subs[token] == null ? '' : String(subs[token]);
+    var variantes = ['<<' + token + '>>', '<< ' + token + '>>',
+                     '<<' + token + ' >>', '<< ' + token + ' >>'];
+    variantes.forEach(function (busca) {
+      requests.push({
+        replaceAllText: {
+          containsText: { text: busca, matchCase: true },
+          replaceText: valor
+        }
+      });
+    });
+  });
+  return requests;
 }
 
 // ---------------------------------------------------------------------------

@@ -79,6 +79,11 @@ tolerados (ex.: `<< Cargo >>` funciona igual a `<<Cargo>>`).
   TEMPLATE_DOC_ID: 'ID_DO_DOC_MODELO',
   OUTPUT_FOLDER_ID: 'ID_DA_PASTA_DESTINO'
   ```
+- **Habilite o serviço avançado da Docs API** (obrigatório — a geração usa
+  `Docs.Documents.batchUpdate`):
+  - No editor do Apps Script, ao lado de **Serviços**, clique em **+**.
+  - Selecione **Google Docs API** e clique em **Adicionar**.
+  - O identificador deve ficar como **`Docs`** (já referenciado no código).
 - Salve.
 
 ### 4. Usar
@@ -149,5 +154,10 @@ chama essa API.
   após exportar o PDF — só os PDFs ficam na pasta.
 - A conversão do `Valor DL` aceita número puro ou texto no formato brasileiro
   (`1.500,00`).
-- Para **muitos** colaboradores de uma vez, lembre-se do limite de tempo de
-  execução do Apps Script (~6 min). Se necessário, gere em lotes.
+- A substituição dos campos usa a **Docs API** (`batchUpdate`) — uma única
+  chamada por documento, cobrindo corpo, cabeçalho e rodapé. A busca é por
+  texto literal; por isso o código gera variantes com/sem espaços do marcador
+  (`<<X>>`, `<< X >>`...) para tolerar como foi digitado.
+- O site (GitHub Pages) gera **em lotes** (5 por requisição) com barra de
+  progresso, evitando o limite de ~6 min por execução do Apps Script. Ajuste
+  `BATCH_SIZE` em `docs/index.html` se quiser lotes maiores/menores.
